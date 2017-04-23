@@ -5,66 +5,98 @@ from bs4 import BeautifulSoup
 import Tkinter as tk
 import errno
 import os
+import time
 
-options = {
-    'format': 'bestaudio/best',
-    'postprocessors': [{
-        'key': 'FFmpegExtractAudio',
-        'preferredcodec': 'mp3',
-        'preferredquality': '256',
-    }],
-}
-
-def mkdirIfNotExists(path):
-    try:
-        os.makedirs(path)
-    except OSError as exc:
-        if exc.errno == errno.EEXIST and os.path.isdir(path):
-            pass
-        else:
-            raise
-
-# TODO: separate logic out from GUI class
-# Make a new directory for video MP3s
-# Make enter create a new box in GUI and put cursor inside/press tab
+# solve GUI bugs
 # Make GUI look nicer
+# show slides of video options (Get First Result MP3s, Choose Best MP3s)
+# make executable
 
 class DownloadApp:
-    def __init__(self, master):
-        self.master = master
-        master.geometry("400x600")
-        master.title("YouTube MP3 Downloader")
-        icon = tk.PhotoImage(file="icon.png") 
-        master.call('wm', 'iconphoto', master._w, icon) 
-
-        self.explain_label = tk.Label(master, 
-            text="Enter a list of video searches below.")
-        self.entry_frame = tk.Frame(master)
-        
-        search_entry = tk.Entry(self.entry_frame)
-        self.search_entries = [search_entry]
-        search_entry.pack()
-
-        self.add_btn = tk.Button(master, text="Add another...", 
-            command=self.addSearch)
-        self.finish_btn = tk.Button(master, text="Get MP3s", 
-            command=self.getVids)
-        
-        self.explain_label.pack()
-        self.entry_frame.pack()
-        self.add_btn.pack()
-        self.finish_btn.pack()
+    options = {
+        'format': 'bestaudio/best',
+        'postprocessors': [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3',
+            'preferredquality': '256',
+        }],
+    }
     
-    def hasLink(self, h3):
+    @classmethod
+    def mkdirIfNotExists(cls, path):
+        try:
+            os.makedirs(path)
+        except OSError as exc:
+            if exc.errno == errno.EEXIST and os.path.isdir(path):
+                pass
+            else:
+                raise
+
+    @classmethod
+    def hasLink(cls, h3):
         h3_class = h3.get('class')
         if h3_class and h3_class[0] == 'yt-lockup-title':
             if h3.a.get("href").startswith('/watch'):
                 return True
         return False
 
-    def getVids(self):
-        mkdirIfNotExists('YouTube MP3s')
-        os.chdir('YouTube MP3s')
+    def __init__(self, master):
+        self.master = master
+        master.geometry('600x600')
+        master.title('YouTube MP3 Downloader')
+        icon = tk.PhotoImage(file="icon.png") 
+        master.call('wm', 'iconphoto', master._w, icon) 
+
+        self.explain_label = tk.Label(master, 
+            text='Enter a list of video searches below.')
+        self.outer_frame = tk.Frame(master)
+        self.entry_frame = tk.Frame(self.outer_frame)
+        
+        search_entry = tk.Entry(self.entry_frame)
+        self.search_entries = [search_entry]
+        search_entry.pack()
+
+        self.add_btn = tk.Button(self.outer_frame, text='Add another... [Tab]', 
+            command=self.addSearch)
+        self.finish_btn = tk.Button(self.outer_frame, text='Get MP3s [Enter]', 
+            command=self.getVids)
+        
+        self.explain_label.pack()
+        self.outer_frame.pack()
+        self.entry_frame.pack()
+        self.add_btn.pack()
+        self.finish_btn.pack()
+ 
+        master.bind('<Tab>', self.addSearch)
+        master.bind('<Return>', self.getVids)
+    
+    def addSearch(self, event=None):
+        new_search = tk.Entry(self.entry_frame)
+        self.search_entries += [new_search]
+        new_search.pack()
+        new_search.focus()
+    
+    def duringDownloadDisplay(self):
+        self.master.unbind('<Tab>')
+        self.master.unbind('<Return>')
+        self.explain_label.config(text='Downloading and converting files...')
+        self.outer_frame.pack_forget()
+        self.master.update()
+
+    def resetAfterDownloadDisplay(self):
+        self.master.bind('<Tab>', self.addSearch)
+        self.master.bind('<Return>', self.getVids)
+        self.explain_label.config(text='Enter a list of video searches below.')
+        self.outer_frame.pack()
+        self.master.update()
+
+    def getVids(self, event=None):
+        print("in getVids...\n")
+        self.duringDownloadDisplay()
+        this_dir = os.path.dirname(os.path.realpath(__file__))
+        file_dir = os.path.join(this_dir, 'YouTube MP3s')
+        self.mkdirIfNotExists(file_dir)
+        os.chdir(file_dir)
         vid_names = [entry.get() for entry in self.search_entries]
         urls = []
         for vid_name in vid_names:
@@ -72,24 +104,21 @@ class DownloadApp:
             resp = requests.get('https://www.youtube.com/results', params=q)
             if resp.status_code == 200:
                 soup = BeautifulSoup(resp.text, 'html.parser')
-                headers = soup.find_all('h3')
-                links = [h3.a.get("href") for h3 in headers if self.hasLink(h3)]
+                hdrs = soup.find_all('h3')
+                links = [h3.a.get("href") for h3 in hdrs if self.hasLink(h3)]
                 # for now, just use first result
                 urls += [links[0]]
         
-        youtube = youtube_dl.YoutubeDL(options)
-        youtube.download(['http://www.youtube.com' + url for url in urls])
-
+        #youtube = youtube_dl.YoutubeDL(self.options)
+        #youtube.download(['http://www.youtube.com' + url for url in urls])
+        time.sleep(2)
         self.search_entries[0].delete(0, tk.END)
         for entry in self.search_entries[1:]:
             entry.destroy()
 
         self.search_entries = self.search_entries[:1]
-
-    def addSearch(self):
-        new_search = tk.Entry(self.entry_frame)
-        self.search_entries += [new_search]
-        new_search.pack()
+        self.resetAfterDownloadDisplay()
+        return "break"
 
 def main():
     root = tk.Tk()
