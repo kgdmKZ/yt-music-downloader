@@ -15,6 +15,7 @@ class DownloadApp:
             'preferredcodec': 'mp3',
             'preferredquality': '256',
         }],
+        'noplaylist' : True
     }
     
     @classmethod
@@ -31,7 +32,9 @@ class DownloadApp:
     def hasLink(cls, h3):
         h3_class = h3.get('class')
         if h3_class and h3_class[0] == 'yt-lockup-title':
-            if h3.a.get("href").startswith('/watch'):
+            link = h3.a.get("href")
+            # use only links that are not for playlists
+            if link.startswith('/watch') and '&list=' not in link[7:]:
                 return True
         return False
 
@@ -90,11 +93,11 @@ class DownloadApp:
         self.finish_alt_btn.config(state=tk.DISABLED)
         self.explain_str.set('Getting info from YouTube searches...')
         self.outer_frame.pack_forget()
-        self.master.update()
+        self.master.update_idletasks()
     
     def getVidsInfo(self, urls):
         urls = ['http://youtube.com' + url for url in urls]
-        return [self.youtube.extract_info(url, download=False) for url in urls]
+        return [self.youtube.extract_info(url, download=False, ) for url in urls]
 
     def getVids(self, alt_btn_clicked):
         print("getVids\n")
