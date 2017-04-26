@@ -43,9 +43,11 @@ class DownloadApp:
         self.path = os.path.dirname(os.path.realpath(__file__))
         icon = tk.PhotoImage(file=os.path.join(self.path, 'icon.png')) 
         master.call('wm', 'iconphoto', master._w, icon) 
-
-        self.explain_label = tk.Label(master, 
-            text='Enter a list of video searches below.', font=(None, 12))
+        
+        self.explain_str = tk.StringVar()
+        self.explain_str.set('Enter a list of video searches below.')
+        self.explain_label = tk.Label(master, textvariable=self.explain_str, 
+            font=(None, 12))
         self.outer_frame = tk.Frame(master)
         self.entry_frame = tk.Frame(self.outer_frame)
         
@@ -70,7 +72,8 @@ class DownloadApp:
         self.add_btn.pack(pady=4, side=tk.LEFT)
         self.finish_btn.pack(pady=4, side=tk.LEFT)
         self.finish_alt_btn.pack(pady=4, side=tk.LEFT)
-
+        
+        self.master.update()
         master.bind('<Return>', self.addSearch)
 
     def addSearch(self, event=None):
@@ -85,7 +88,7 @@ class DownloadApp:
         self.add_btn.config(state=tk.DISABLED)
         self.finish_btn.config(state=tk.DISABLED)
         self.finish_alt_btn.config(state=tk.DISABLED)
-        self.explain_label.config(text='Getting info from YouTube searches...')
+        self.explain_str.set('Getting info from YouTube searches...')
         self.outer_frame.pack_forget()
         self.master.update()
     
@@ -117,17 +120,18 @@ class DownloadApp:
         yt = youtube_dl.YoutubeDL(self.options)
         
         if not alt_btn_clicked:
-            self.explain_label.config(
-                text='Downloading and converting files...')
+            self.explain_str.set('Downloading and converting files...')
+            self.master.update_idletasks()
             yt.download(['http://www.youtube.com' + url for url in urls])
-            self.explain_label.config(text='Your MP3s are ready!')
-            time.sleep(5)
+            self.explain_str.set('Your MP3s are ready!')
+            self.master.update_idletasks()
+            time.sleep(3)
             self.master.destroy()
         else:
-            self.explain_label.destroy()
             vids_info = [self.getVidsInfo(alt_urls) for alt_urls in urls]
             kwargs = {'vids_data' : vids_info, 'youtube' : yt, 'urls' : urls}
             self.select_choices = ChoicesInfo(self.master, **kwargs)
+            self.explain_label.destroy()
             self.select_choices.pack()
 
 def main():

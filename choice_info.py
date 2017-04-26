@@ -27,7 +27,8 @@ class ChoicesInfo(tk.Frame):
         self.title_label = tk.Label(self.outer_frame, font=(None, 10))
         self.thumb_label = tk.Label(self.outer_frame)
         self.uploader_label = tk.Label(self.outer_frame, font=(None, 8))
-        self.desc_msg = tk.Message(self.outer_frame, font=(None, 8), aspect=600)
+        self.desc_text = tk.Text(self.outer_frame, font=(None, 8), height=7,
+            state=tk.DISABLED, borderwidth=0, relief=tk.FLAT, wrap=tk.WORD)
         self.duration_label = tk.Label(self.outer_frame, font=(None, 8))
         
         self.last_btn_frame = tk.Frame(self.outer_frame)
@@ -46,9 +47,9 @@ class ChoicesInfo(tk.Frame):
         self.title_label.pack(pady=6)
         self.thumb_label.pack(pady=14)
         self.uploader_label.pack()
-        self.desc_msg.pack()
+        self.desc_text.pack()
         self.duration_label.pack(pady=6)
-        self.last_btn_frame.pack(side=tk.LEFT)
+        self.last_btn_frame.pack(side=tk.LEFT, padx=100)
         self.choose_btn.pack(side=tk.LEFT)
         self.next_btn_frame.pack(side=tk.LEFT)
         self.next_btn.pack()
@@ -57,11 +58,13 @@ class ChoicesInfo(tk.Frame):
     def updateVidInfo(self):
         print("Self.chosen is %d and self.cur_option is %d\n" % (self.chosen, self.cur_option))
         vid_info = self.vids_data[self.chosen][self.cur_option]
-        self.uploader_label.configure(text="Uploaded by " + vid_info['uploader'])
+        self.uploader_label.configure(
+            text="Uploaded by " + vid_info['uploader'])
         description = vid_info['description']
-        if len(description) > 300:
-            description = description[:300] + "..."
-        self.desc_msg.configure(text=description)
+        self.desc_text.configure(state=tk.NORMAL)
+        self.desc_text.delete('0.0', tk.END)
+        self.desc_text.insert('0.0', description)
+        self.desc_text.configure(state=tk.DISABLED)
         
         thumb_url = vid_info['thumbnails'][0]['url']
         thumb_file = cStringIO.StringIO(urllib.urlopen(thumb_url).read())
@@ -112,7 +115,8 @@ class ChoicesInfo(tk.Frame):
             self.updateVidInfo()
         elif self.chosen == len(self.vids_data):
             print("in if block elif\n")
-            self.explain_label.config(text='Downloading and converting files...')
+            self.explain_label.config(
+                text='Downloading and converting files...')
             self.youtube.download(self.choice_urls)
             self.explain_label.config(text='Your MP3s are ready!')
             time.sleep(5)
