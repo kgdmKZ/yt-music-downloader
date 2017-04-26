@@ -5,8 +5,7 @@ import errno
 import os
 import time
 from bs4 import BeautifulSoup
-
-# show slides of video options (Get First Result MP3s, Choose Best MP3s)
+from choice_info import ChoicesInfo
 
 class DownloadApp:
     options = {
@@ -38,54 +37,64 @@ class DownloadApp:
 
     def __init__(self, master):
         self.master = master
-        master.geometry('600x400')
+        self.youtube = youtube_dl.YoutubeDL(self.options)
+        master.geometry('800x600')
         master.title('YouTube MP3 Downloader')
         self.path = os.path.dirname(os.path.realpath(__file__))
         icon = tk.PhotoImage(file=os.path.join(self.path, 'icon.png')) 
         master.call('wm', 'iconphoto', master._w, icon) 
 
         self.explain_label = tk.Label(master, 
-            text='Enter a list of video searches below.')
+            text='Enter a list of video searches below.', font=(None, 12))
         self.outer_frame = tk.Frame(master)
         self.entry_frame = tk.Frame(self.outer_frame)
         
-        search_entry = tk.Entry(self.entry_frame)
+        search_entry = tk.Entry(self.entry_frame, font=(None, 10))
         self.search_entries = [search_entry]
         search_entry.pack(pady=1)
         search_entry.focus()
 
-        self.add_btn = tk.Button(self.outer_frame, text='Add another... [Enter]', 
-            command=self.addSearch)
-        self.finish_btn = tk.Button(self.outer_frame, text='Get MP3s', 
-            command=self.getVids)
+        self.add_btn = tk.Button(self.outer_frame, 
+            text='Add another... [Enter]', command=self.addSearch, 
+            font=(None, 10))
+        self.finish_btn = tk.Button(self.outer_frame, 
+            text='Get first result MP3s', command=lambda: self.getVids(False),
+            font=(None, 10))
+        self.finish_alt_btn = tk.Button(self.outer_frame,
+            text='Choose each best result', command=lambda: self.getVids(True),
+            font=(None, 10))
         
         self.explain_label.pack(pady=14)
         self.outer_frame.pack()
         self.entry_frame.pack(pady=10)
-        self.add_btn.pack(pady=4)
-        self.finish_btn.pack()
+        self.add_btn.pack(pady=4, side=tk.LEFT)
+        self.finish_btn.pack(pady=4, side=tk.LEFT)
+        self.finish_alt_btn.pack(pady=4, side=tk.LEFT)
 
         master.bind('<Return>', self.addSearch)
-    
+
     def addSearch(self, event=None):
-        new_search = tk.Entry(self.entry_frame)
+        print("addSearch\n")
+        new_search = tk.Entry(self.entry_frame, font=(None, 10))
         self.search_entries += [new_search]
         new_search.pack(pady=1)
         new_search.focus()
     
     def duringDownloadDisplay(self):
         self.master.unbind('<Return>')
-        self.explain_label.config(text='Downloading and converting files...')
+        self.add_btn.config(state=tk.DISABLED)
+        self.finish_btn.config(state=tk.DISABLED)
+        self.finish_alt_btn.config(state=tk.DISABLED)
+        self.explain_label.config(text='Getting info from YouTube searches...')
         self.outer_frame.pack_forget()
-        self.master.update_idletasks()
+        self.master.update()
+    
+    def getVidsInfo(self, urls):
+        urls = ['http://youtube.com' + url for url in urls]
+        return [self.youtube.extract_info(url, download=False) for url in urls]
 
-    def resetAfterDownloadDisplay(self):
-        self.master.bind('<Return>', self.addSearch)
-        self.explain_label.config(text='Enter a list of video searches below.')
-        self.outer_frame.pack()
-        self.master.update_idletasks()
-
-    def getVids(self, event=None):
+    def getVids(self, alt_btn_clicked):
+        print("getVids\n")
         self.duringDownloadDisplay()
         file_dir = os.path.join(self.path, 'YouTube MP3s')
         self.mkdirIfNotExists(file_dir)
@@ -98,19 +107,28 @@ class DownloadApp:
             if resp.status_code == 200:
                 soup = BeautifulSoup(resp.text, 'html.parser')
                 hdrs = soup.find_all('h3')
-                links = [h3.a.get("href") for h3 in hdrs if self.hasLink(h3)]
-                # for now, just use first result
-                urls += [links[0]]
+                links = [h3.a.get('href') for h3 in hdrs if self.hasLink(h3)]
+                if alt_btn_clicked:
+                    urls += [links[:5]]
+                else:
+                    urls += [links[0]]
         
-        youtube = youtube_dl.YoutubeDL(self.options)
-        youtube.download(['http://www.youtube.com' + url for url in urls])
+        self.outer_frame.destroy()
+        yt = youtube_dl.YoutubeDL(self.options)
         
-        self.search_entries[0].delete(0, tk.END)
-        for entry in self.search_entries[1:]:
-            entry.destroy()
-        
-        self.search_entries = self.search_entries[:1]
-        self.resetAfterDownloadDisplay()
+        if not alt_btn_clicked:
+            self.explain_label.config(
+                text='Downloading and converting files...')
+            yt.download(['http://www.youtube.com' + url for url in urls])
+            self.explain_label.config(text='Your MP3s are ready!')
+            time.sleep(5)
+            self.master.destroy()
+        else:
+            self.explain_label.destroy()
+            vids_info = [self.getVidsInfo(alt_urls) for alt_urls in urls]
+            kwargs = {'vids_data' : vids_info, 'youtube' : yt, 'urls' : urls}
+            self.select_choices = ChoicesInfo(self.master, **kwargs)
+            self.select_choices.pack()
 
 def main():
     root = tk.Tk()
