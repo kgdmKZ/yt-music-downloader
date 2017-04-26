@@ -12,8 +12,10 @@ class ChoicesInfo(tk.Frame):
         self.vids_data = kwargs['vids_data']
         self.youtube = kwargs['youtube']
         self.urls = kwargs['urls']
+        
         # start on first video search's results
         self.chosen = 0
+        
         # start on the first alternative in results
         self.cur_option = 0
         
@@ -53,8 +55,10 @@ class ChoicesInfo(tk.Frame):
         self.choose_btn.pack(side=tk.LEFT, expand=True)
         self.next_btn_frame.pack(side=tk.LEFT, expand=True)
         self.next_btn.pack()
+        
         self.updateVidInfo()
         self.master.update()
+        
         self.master.bind('<Return>', self.makeChoice)
         self.master.bind('<Left>', self.pressLast)
         self.master.bind('<Right>', self.pressNext)
@@ -71,7 +75,6 @@ class ChoicesInfo(tk.Frame):
         self.master.bind('<Return>', self.makeChoice)
 
     def updateVidInfo(self):
-        print("Self.chosen is %d and self.cur_option is %d\n" % (self.chosen, self.cur_option))
         vid_info = self.vids_data[self.chosen][self.cur_option]
         self.uploader_label.configure(
             text="Uploaded by " + vid_info['uploader'])
@@ -98,51 +101,51 @@ class ChoicesInfo(tk.Frame):
     
     def pressNext(self, event=None):
         self.unbindKeys()
+        
         if self.cur_option == 0:
             self.last_btn.pack()
         if self.cur_option == self.ALTERNATIVE_COUNT-2:
             self.next_btn.pack_forget()
         if self.cur_option < self.ALTERNATIVE_COUNT-1:
             self.cur_option += 1
+        
         self.updateVidInfo()
         self.bindKeys()
 
     def pressLast(self, event=None):
         self.unbindKeys()
+        
         if self.cur_option <= 1:
             self.last_btn.pack_forget()
         if self.cur_option == self.ALTERNATIVE_COUNT-1:
             self.next_btn.pack()
         if self.cur_option > 0:
             self.cur_option -= 1
+        
         self.updateVidInfo()
         self.bindKeys()
 
     def makeChoice(self, event=None):
-        print("Length of self.vids_data is %d\n" % len(self.vids_data))
-        print("Length of self.vids_data[self.chosen] is %d\n" % len(self.vids_data[self.chosen]))
-        print("Length of self.vids_data[self.chosen][0] is %d\n" % len(self.vids_data[self.chosen][0]))
         self.unbindKeys()
+        
         choice = self.urls[self.chosen][self.cur_option]
-        print("URL is %s\n" % choice)
         self.choice_urls += ['http://youtube.com' + choice]
         self.chosen += 1
-        print("Self.chosen is %d\n" % self.chosen)
-        print("length of vids data is %d\n" % len(self.vids_data))
+        
         if self.chosen < len(self.vids_data):
-            print("in if block if\n")
             self.cur_option = 0
+            
             self.updateVidInfo()
             self.bindKeys()
         elif self.chosen == len(self.vids_data):
-            print("in if block elif\n")
             self.explain_label.config(
                 text='Downloading and converting files...')
             self.outer_frame.destroy()
             self.update_idletasks()
+            
             self.youtube.download(self.choice_urls)
+            
             self.explain_label.config(text='Your MP3s are ready!')
             self.update_idletasks()
             time.sleep(5)
             self.master.destroy()
-            print("finished...\n")
