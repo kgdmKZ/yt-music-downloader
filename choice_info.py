@@ -1,5 +1,5 @@
+from PIL import _tkinter_finder, ImageTk, Image
 import Tkinter as tk
-from PIL import ImageTk, Image
 import urllib, cStringIO
 import time
 
